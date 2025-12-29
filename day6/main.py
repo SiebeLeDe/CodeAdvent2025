@@ -32,7 +32,6 @@ def read_math_problems_file(file_path: pl.Path) -> list[MathProblem]:
 
     for col in data.T:
         numbers = [int(num) for num in col[:-1]]
-        print(numbers)
         operation = col[-1]
         problems.append(MathProblem(numbers=numbers, operation=operation))
 
@@ -57,40 +56,28 @@ def read_math_problems_file_cephalopod_math(file_path: pl.Path) -> list[MathProb
     8 + 248 + 369
     356 + 24 + 100
     """
-    lines = []
-    with open(file_path, "r") as f:
-        lines = f.readlines()
+    lines = file_path.read_text().splitlines()
 
     operation_lines = lines[-1]
     number_lines = lines[:-1]
 
-    [print(line) for line in lines]
-
-    # The operation sign defines the last digit of each column
-    operation_indices = [i for i, char in enumerate(operation_lines) if char.strip()]
-    # The minus one accounts for the whitespace that separates each math problem / column
-    n_numbers_per_problem = [operation_indices[i] - operation_indices[i - 1] - 1 for i in range(1, len(operation_indices))]
-    print(f"Operation indices: {operation_indices[:10]}")
-    print(f"Numbers per problem: {n_numbers_per_problem[:10]}")
-
     # Now we go through each column from left to right and read the digits from top to bottom
     problems = []
-    current_index = 0
-    for i, n_digits in enumerate(n_numbers_per_problem):
-        numbers = []
+    numbers = []
+    current_index = len(number_lines[0]) - 1  # Start from the rightmost character
+    while current_index >= 0:
+        # Read numbers from top to bottom for this column
+        number = [line[current_index] for line in number_lines if line[current_index] != " "]
+        numbers.append(int("".join(number)))
 
-        for i in range(n_digits):
-            number = []
-            for line in number_lines:
-                char = line[current_index + i]
-                if char.strip():
-                    number.append(int(char))
-            numbers.append(int("".join(map(str, number))))
+        # When we encounter an operation sign, we finalize the current problem and start a new one by resetting numbers. Also, we skip one more character because of the whitespaces between differrent problems (columns).
+        if (operation := operation_lines[current_index]) != " ":
+            problems.append(MathProblem(numbers=numbers, operation=operation))
+            numbers = []
+            current_index -= 1  # Skip the operation character
 
-        operation = operation_lines[current_index]
-        problems.append(MathProblem(numbers=numbers, operation=operation))
-        current_index += n_digits + 1  # Move to the next problem, accounting for whitespace
-
+        # Move to the next character to the left which will stop when the index is less than 0
+        current_index -= 1
     return problems
 
 
@@ -126,7 +113,7 @@ def main():
     input_file = current_dir / "input.txt"
 
     # example_problems = read_math_problems_file(example_file)
-    example_problems = read_math_problems_file_cephalopod_math(input_file)
+    example_problems = read_math_problems_file_cephalopod_math(example_file)
     solved_problems = [solve_math_problem(problem) for problem in example_problems]
 
     final_result = sum(solved_problems)
