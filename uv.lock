@@ -13,6 +13,7 @@ members = [
     "day6",
     "day7",
     "day8",
+    "day9",
 ]
 
 [[package]]
@@ -133,6 +134,11 @@ source = { virtual = "day7" }
 name = "day8"
 version = "0.1.0"
 source = { virtual = "day8" }
+
+[[package]]
+name = "day9"
+version = "0.1.0"
+source = { virtual = "day9" }
 
 [[package]]
 name = "fonttools"
