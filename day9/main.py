@@ -3,9 +3,11 @@ import matplotlib.pyplot as plt
 from itertools import combinations
 from dataclasses import dataclass
 
+from typing import Sequence
+
 
 @dataclass
-class RedTile:
+class Tile:
     x: int
     y: int
 
@@ -13,7 +15,7 @@ class RedTile:
         return f"{self.x}, {self.y}"
 
 
-def read_red_tiles_file(file_path: pl.Path) -> list[RedTile]:
+def read_red_tiles_file(file_path: pl.Path) -> list[Tile]:
     """
     Reads a file containing the positions of red tiles on a grid.
     Each line represents one row of the grid, with coordinates separated by commas.
@@ -29,17 +31,52 @@ def read_red_tiles_file(file_path: pl.Path) -> list[RedTile]:
     7,3
     """
     lines = file_path.read_text().splitlines()
-    red_tiles = [RedTile(x, y) for line in lines for x, y in [map(int, line.split(","))]]
+    red_tiles = [Tile(x, y) for line in lines for x, y in [map(int, line.split(","))]]
     return red_tiles
 
 
-def plot_red_tiles(red_tiles: list[RedTile]) -> None:
+def add_green_tiles(red_tiles: list[Tile]) -> list[Tile]:
+    """
+    For part two, we add green tiles. Every red tile is connected to the red tile before and after it by a straight line of green tiles.
+    The list also wraps, so the first and last red tiles are also connected by green tiles.
+    """
+    green_tiles = []
+    num_red_tiles = len(red_tiles)
+
+    for i in range(num_red_tiles):
+        start_tile = red_tiles[i]
+        end_tile = red_tiles[(i + 1) % num_red_tiles]  # Wrap around to the first tile
+
+        if start_tile.x == end_tile.x:  # Vertical line
+            y_range = range(min(start_tile.y, end_tile.y) + 1, max(start_tile.y, end_tile.y))
+            for y in y_range:
+                green_tiles.append(Tile(start_tile.x, y))
+        elif start_tile.y == end_tile.y:  # Horizontal line
+            x_range = range(min(start_tile.x, end_tile.x) + 1, max(start_tile.x, end_tile.x))
+            for x in x_range:
+                green_tiles.append(Tile(x, start_tile.y))
+        else:
+            raise ValueError("Tiles are not aligned either horizontally or vertically.")
+
+    return red_tiles + green_tiles
+
+
+def plot_tiles(red_tiles: Sequence[Tile], green_tiles: Sequence[Tile] | None = None, special_tiles: Sequence[Tile] | None = None) -> None:
     """
     Plots the red tiles on a grid using matplotlib.
     """
-
     x_coords, y_coords = zip(*[(tile.x, tile.y) for tile in red_tiles])
     plt.scatter(x_coords, y_coords, color="red")
+
+    if green_tiles:
+        green_x, green_y = zip(*[(tile.x, tile.y) for tile in green_tiles])
+        plt.scatter(green_x, green_y, color="green", alpha=0.5)
+
+    if special_tiles:
+        special_x, special_y = zip(*[(tile.x, tile.y) for tile in special_tiles])
+        plt.scatter(special_x, special_y, color="blue", s=100, edgecolor="black")
+        plt.fill([special_tiles[0].x, special_tiles[1].x, special_tiles[1].x, special_tiles[0].x], [special_tiles[0].y, special_tiles[0].y, special_tiles[1].y, special_tiles[1].y], color="blue", alpha=0.2)
+
     plt.title("Red Tiles on Grid")
     plt.xlabel("X Coordinate")
     plt.ylabel("Y Coordinate")
@@ -53,7 +90,7 @@ def plot_red_tiles(red_tiles: list[RedTile]) -> None:
     plt.show()
 
 
-def get_all_red_tile_combinations(red_tiles: list[RedTile]) -> list[tuple[RedTile, RedTile]]:
+def get_all_red_tile_combinations(red_tiles: list[Tile]) -> list[tuple[Tile, Tile]]:
     """
     Generates all unique combinations of red tiles.
     Each combination is represented as a frozenset of tile coordinates.
@@ -61,7 +98,7 @@ def get_all_red_tile_combinations(red_tiles: list[RedTile]) -> list[tuple[RedTil
     return list(combinations(red_tiles, 2))
 
 
-def calculate_area_of_red_tiles_opposite_corners(red_tiles: tuple[RedTile, RedTile]) -> int:
+def calculate_area_of_red_tiles_opposite_corners(red_tiles: tuple[Tile, Tile]) -> int:
     """Given two opposite corners of a rectangle formed by red tiles, calculate the area which is the width (x) times height (y) difference."""
 
     # Apparently, we need to add 1 to include both edges
@@ -80,9 +117,10 @@ def main():
     example_file = current_dir / "example.txt"
     input_file = current_dir / "input.txt"
 
-    example_red_tiles = read_red_tiles_file(input_file)
+    example_red_tiles = read_red_tiles_file(example_file)
+    green_tiles = add_green_tiles(example_red_tiles)
 
-    plot_red_tiles(example_red_tiles)
+    plot_tiles(example_red_tiles, green_tiles)
 
     all_combinations = get_all_red_tile_combinations(example_red_tiles)
     print("Total unique combinations of red tiles:", len(all_combinations))
@@ -95,6 +133,7 @@ def main():
             max_area = area
             max_area_tiles = combo
 
+    plot_tiles(example_red_tiles, green_tiles, special_tiles=max_area_tiles)
     print("Maximum area formed by red tiles:", max_area)
     print("Tiles forming maximum area:", max_area_tiles)
 
