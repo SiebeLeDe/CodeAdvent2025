@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "matplotlib>=3.10.8",
     "numpy>=2.4.0",
+    "tabulate>=0.9.0",
 ]
 
 [tool.uv.workspace]
@@ -23,4 +24,5 @@ members = [
     "day10",
     "day11",
     "day12",
+    "einsum",
 ]
