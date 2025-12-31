@@ -148,7 +148,7 @@ def main():
     example_file = current_dir / "example.txt"
     input_file = current_dir / "input.txt"
 
-    coordinates = parse_input(example_file)
+    coordinates = parse_input(input_file)
     # compressed = compress_coordinates(coordinates)
     # borders = create_borders(compressed)
 

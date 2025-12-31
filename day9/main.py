@@ -68,9 +68,9 @@ def plot_tiles(red_tiles: Sequence[Tile], green_tiles: Sequence[Tile] | None = N
     x_coords, y_coords = zip(*[(tile.x, tile.y) for tile in red_tiles])
     plt.scatter(x_coords, y_coords, color="red")
 
-    if green_tiles:
-        green_x, green_y = zip(*[(tile.x, tile.y) for tile in green_tiles])
-        plt.scatter(green_x, green_y, color="green", alpha=0.5)
+    # if green_tiles:
+    #     green_x, green_y = zip(*[(tile.x, tile.y) for tile in green_tiles])
+    #     plt.scatter(green_x, green_y, color="green", alpha=0.5)
 
     if special_tiles:
         special_x, special_y = zip(*[(tile.x, tile.y) for tile in special_tiles])
