@@ -71,6 +71,7 @@ def solve_gf2(matrix: NDArray[np.int_], target: NDArray[np.int_]) -> tuple[int, 
     num_rows, num_cols = matrix.shape
     for col in range(num_cols):
         # Find a row with a 1 in this column
+        row = None
         for row in range(col, num_rows):
             if matrix[row, col] == 1:
                 break
