@@ -73,7 +73,14 @@ def christoffel_symbols(metric: sp.Matrix, symbols: Sequence[sp.Symbol]) -> sp.M
     These are also known as the Levi-Civita connection coefficients and represent how the basis vectors change from two nearby points in a curved space (infinitesimally small displacements).
     In a flat space, all Christoffel symbols are zero which one may verify using Cartesian coordinates, polar coordinates or spherical coordinates.
 
-    $\Gamma^{\alpha}_{\beta \gamma} = \frac{1}{2} g^{\alpha \epsilon} \left( \partial_{\gamma} g_{\beta \epsilon} + \partial_{\beta} g_{\gamma \epsilon} - \partial_{\epsilon} g_{\beta \gamma} \right)$
+    \Gamma^{i}_{jk} = \frac{1}{2} g^{il} \left( \partial_{k} g_{lj} + \partial_{j} g_{lk} - \partial_{l} g_{jk} \right)
+
+    or using the index notation:
+    i = alpha
+    j = beta
+    k = gamma
+
+    \Gamma^{\alpha}_{\beta \gamma} = \frac{1}{2} g^{\alpha \epsilon} \left( \partial_{\gamma} g_{\epsilon \beta} + \partial_{\beta} g_{\epsilon \gamma} - \partial_{\epsilon} g_{\beta \gamma} \right)
 
     """
 
@@ -88,13 +95,13 @@ def christoffel_symbols(metric: sp.Matrix, symbols: Sequence[sp.Symbol]) -> sp.M
 
                 for epsilon in range(n):
                     # Compute the Christoffel symbol components
-                    first_term = sp.diff(metric[beta, epsilon], symbols[gamma])
-                    second_term = sp.diff(metric[gamma, epsilon], symbols[beta])
+                    first_term = sp.diff(metric[epsilon, beta], symbols[gamma])
+                    second_term = sp.diff(metric[epsilon, gamma], symbols[beta])
                     third_term = sp.diff(metric[beta, gamma], symbols[epsilon])
                     # Sum the terms and multiply by the inverse metric
                     Gamma[alpha, beta, gamma] += g_inv[alpha, epsilon] * (first_term + second_term - third_term)  # type: ignore
 
-                Gamma[alpha, beta, gamma] = 0.5 * Gamma[alpha, beta, gamma].simplify()
+                Gamma[alpha, beta, gamma] = 0.5 * Gamma[alpha, beta, gamma]
     return Gamma
 
 
@@ -134,7 +141,6 @@ def riemann_curvature_tensor(Gamma: sp.Matrix, symbols: Sequence[sp.Symbol]) -> 
                         term3 += Gamma[alpha, epsilon, gamma] * Gamma[epsilon, beta, delta] - Gamma[alpha, epsilon, delta] * Gamma[epsilon, beta, gamma]  # type: ignore
 
                     Riemann[alpha, beta, gamma, delta] = term1 - term2 + term3  # type: ignore
-                    Riemann[alpha, beta, gamma, delta] = Riemann[alpha, beta, gamma, delta].simplify()
 
     return Riemann
 
@@ -149,19 +155,23 @@ def ricci_tensor(Riemann: sp.Matrix) -> sp.Matrix:
 
     for alpha in range(n):
         for beta in range(n):
-            Ricci[alpha, beta] = sum(Riemann[epsilon, alpha, epsilon, beta] for epsilon in range(n))  # type: ignore
-            Ricci[alpha, beta]
+            Ricci[alpha, beta] = 0
+            for epsilon in range(n):
+                Ricci[alpha, beta] += Riemann[epsilon, alpha, epsilon, beta]  # type: ignore
     return Ricci
 
 
-def ricci_scalar(Ricci: sp.Matrix, inv_metric: sp.Matrix) -> sp.Expr:
+def ricci_scalar(Ricci: sp.Matrix, inv_metric: sp.Matrix) -> sp.Symbol:
     """
     Calculates the Ricci scalar by contracting the Ricci tensor with the inverse metric tensor.
     The Ricci scalar provides a single scalar value that summarizes the curvature of space at a point.
     """
     n = Ricci.shape[0]
-    R: sp.Expr = sum(inv_metric[alpha, beta] * Ricci[alpha, beta] for alpha in range(n) for beta in range(n))  # type: ignore
-    R.simplify()
+    R = sp.S.Zero
+
+    for alpha in range(n):
+        for beta in range(n):
+            R += inv_metric[alpha, beta] * Ricci[alpha, beta]  # type: ignore
     return R
 
 
@@ -170,30 +180,35 @@ def ricci_scalar(Ricci: sp.Matrix, inv_metric: sp.Matrix) -> sp.Expr:
 # ============================================================
 
 
-def print_tensor(tensor: sp.Matrix, symbols: Sequence[sp.Symbol], header: str | None = None) -> None:
+def print_tensor(tensor: sp.Matrix, symbols: Sequence[sp.Symbol], header: str = "Tensor"):
+    r"""
+    Prints a general tensor in a readable format.
     """
-    Prints a tensor in a readable format.
-
-    If rank is >2, we flatten it down to 2D slices for each combination of the other indices.
-    If rank is 2 or lower, we print it directly as a matrix/vector/scalar.
-    """
-    rank = tensor.rank()
-    if rank <= 2:
-        print(f"\n{header:=^50}\n") if header else None
-        sp.pprint(tensor)
-        return
-
     n = len(symbols)
-    print(f"\n{header:=^50}\n") if header else None
-    for indices in itertools.product(range(n), repeat=rank - 2):
-        symbolic_matrix = sp.Matrix([[f"{''.join(str(symbols[i]) for i in indices)}" for _ in range(n)] for _ in range(n)])
-        value_matrix = sp.Matrix([[tensor[indices + (i, j)] for j in range(n)] for i in range(n)])
+    print(f"\n{header:=^60}:\n")
+    simplified_tensor = tensor.applyfunc(sp.simplify)
+    if tensor.rank() == 2:
+        sp.pprint(simplified_tensor, use_unicode=True)
+    elif tensor.rank() == 3:
+        for alpha in range(n):
+            print(f"\nSlice {alpha} ({symbols[alpha]}) with indices [{alpha}, :, :]:\n")
+            sp.pprint(simplified_tensor[alpha, :, :], use_unicode=True)
+    elif tensor.rank() == 4:
+        for alpha in range(n):
+            for beta in range(n):
+                print(f"\nSlice [{alpha}, {beta}, :, :] ({symbols[alpha]}, {symbols[beta]}):\n")
+                sp.pprint(simplified_tensor[alpha, beta, :, :], use_unicode=True)
 
-        symbols_str = ", ".join(f"{symbols[idx]}={idx}" for idx, _ in enumerate(indices))
-        print(f"Tensor for indices {symbols_str}:")
-        sp.pprint(symbolic_matrix)
-        sp.pprint(value_matrix)
-        print()
+
+def print_riemann_curvature_tensor(Riemann: sp.Matrix, symbols: Sequence[sp.Symbol], header: str = "Riemann Curvature Tensor"):
+    r"""
+    Prints the Riemann curvature tensor in a readable format.
+    """
+    n = len(symbols)
+    print(f"\n{header}:\n")
+    for alpha in range(n):
+        for gamma in range(n):
+            sp.pprint(Riemann[alpha, :, gamma, :], use_unicode=True)
 
 
 # ============================================================
@@ -214,10 +229,8 @@ def main():
     print_tensor(Gamma, coords.symbols, header="Christoffel Symbols")
     print_tensor(riemann_tensor, coords.symbols, header="Riemann Curvature Tensor")
     print_tensor(ricci_tens, coords.symbols, header="Ricci Tensor")
-    print("Ricci Scalar:\n")
-    sp.pprint(ricci_scal)
-
-    sp.pprint(riemann_tensor)
+    print(f"\n{'Ricci Scalar':=^60}:\n")
+    sp.pprint(sp.simplify(ricci_scal), use_unicode=True)
 
 
 if __name__ == "__main__":
