@@ -1,7 +1,24 @@
+"""
+This module provides functions to compute fundamental quantities in General Relativity, including:
+
+1. **Metric Tensor**: Describes the geometry of spacetime and encodes information about distances and angles.
+2. **Christoffel Symbols**: Represent the connection coefficients that describe how vectors change as they are parallel transported.
+3. **Riemann Curvature Tensor**: Measures the curvature of spacetime and how much it deviates from being flat.
+4. **Ricci Tensor**: A contraction of the Riemann tensor, summarizing curvature information relevant to Einstein's field equations.
+5. **Ricci Scalar**: A single scalar value summarizing the curvature of spacetime at a point.
+
+Functions:
+- `christoffel_symbols`: Computes the Christoffel symbols of the second kind.
+- `riemann_curvature_tensor`: Computes the Riemann curvature tensor.
+- `ricci_tensor`: Computes the Ricci tensor by contracting the Riemann tensor.
+- `ricci_scalar`: Computes the Ricci scalar by contracting the Ricci tensor with the inverse metric.
+- `print_tensor` and `print_riemann_curvature_tensor`: Utility functions for displaying tensors in a readable format.
+
+"""
+
 from attrs import define
 import sympy as sp
 from typing import Protocol, Sequence
-import itertools
 
 sp.init_printing(use_latex=True)
 
@@ -82,6 +99,12 @@ def christoffel_symbols(metric: sp.Matrix, symbols: Sequence[sp.Symbol]) -> sp.M
 
     \Gamma^{\alpha}_{\beta \gamma} = \frac{1}{2} g^{\alpha \epsilon} \left( \partial_{\gamma} g_{\epsilon \beta} + \partial_{\beta} g_{\epsilon \gamma} - \partial_{\epsilon} g_{\beta \gamma} \right)
 
+    Parameters:
+    - metric (sp.Matrix): The metric tensor, a symmetric matrix representing spacetime geometry.
+    - symbols (Sequence[sp.Symbol]): The coordinate symbols (e.g., t, x, y, z).
+
+    Returns:
+    - sp.Matrix: A 3D array of Christoffel symbols \( \Gamma^i_{jk} \).
     """
 
     n = metric.shape[0]
@@ -125,6 +148,12 @@ def riemann_curvature_tensor(Gamma: sp.Matrix, symbols: Sequence[sp.Symbol]) -> 
 
     R^{\alpha}_{\beta \gamma \delta} = \partial_{\gamma} \Gamma^{\alpha}_{\beta \delta} - \partial_{\delta} \Gamma^{\alpha}_{\beta \gamma} + \Gamma^{\epsilon}_{\beta \delta} \Gamma^{\alpha}_{\epsilon \gamma} - \Gamma^{\epsilon}_{\beta \gamma} \Gamma^{\alpha}_{\epsilon \delta}
 
+    Parameters:
+    - Gamma (sp.Matrix): The Christoffel symbols of the second kind.
+    - symbols (Sequence[sp.Symbol]): The coordinate symbols.
+
+    Returns:
+    - sp.Matrix: A 4D array representing the Riemann curvature tensor \( R^i_{jkl} \).
     """
     n = len(symbols)
     Riemann = sp.MutableDenseNDimArray.zeros(n, n, n, n)
@@ -149,6 +178,12 @@ def ricci_tensor(Riemann: sp.Matrix) -> sp.Matrix:
     """
     Calculates the Ricci tensor by contracting the Riemann curvature tensor along its first and third indices (1st: contravariant, 3rd: covariant).
     The Ricci tensor provides a measure of the degree to which the volume of a small geodesic ball in a curved space deviates from that in flat space.
+
+    Parameters:
+    - Riemann (sp.Matrix): The Riemann curvature tensor.
+
+    Returns:
+    - sp.Matrix: The Ricci tensor, a 2D array obtained by contracting the Riemann tensor.
     """
     n = Riemann.shape[0]
     Ricci = sp.MutableDenseNDimArray.zeros(n, n)
@@ -165,6 +200,13 @@ def ricci_scalar(Ricci: sp.Matrix, inv_metric: sp.Matrix) -> sp.Symbol:
     """
     Calculates the Ricci scalar by contracting the Ricci tensor with the inverse metric tensor.
     The Ricci scalar provides a single scalar value that summarizes the curvature of space at a point.
+
+    Parameters:
+    - Ricci (sp.Matrix): The Ricci tensor.
+    - inv_metric (sp.Matrix): The inverse of the metric tensor.
+
+    Returns:
+    - sp.Symbol: The Ricci scalar, a single value summarizing spacetime curvature.
     """
     n = Ricci.shape[0]
     R = sp.S.Zero
@@ -183,6 +225,14 @@ def ricci_scalar(Ricci: sp.Matrix, inv_metric: sp.Matrix) -> sp.Symbol:
 def print_tensor(tensor: sp.Matrix, symbols: Sequence[sp.Symbol], header: str = "Tensor"):
     r"""
     Prints a general tensor in a readable format.
+
+    Parameters:
+    - tensor (sp.Matrix): The tensor to be printed.
+    - symbols (Sequence[sp.Symbol]): The coordinate symbols.
+    - header (str): A header for the printed output.
+
+    Returns:
+    - None
     """
     n = len(symbols)
     print(f"\n{header:=^60}:\n")
@@ -203,6 +253,14 @@ def print_tensor(tensor: sp.Matrix, symbols: Sequence[sp.Symbol], header: str = 
 def print_riemann_curvature_tensor(Riemann: sp.Matrix, symbols: Sequence[sp.Symbol], header: str = "Riemann Curvature Tensor"):
     r"""
     Prints the Riemann curvature tensor in a readable format.
+
+    Parameters:
+    - Riemann (sp.Matrix): The Riemann curvature tensor to be printed.
+    - symbols (Sequence[sp.Symbol]): The coordinate symbols.
+    - header (str): A header for the printed output.
+
+    Returns:
+    - None
     """
     n = len(symbols)
     print(f"\n{header}:\n")
