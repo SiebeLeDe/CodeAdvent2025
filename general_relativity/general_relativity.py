@@ -237,17 +237,17 @@ def print_tensor(tensor: sp.Matrix, symbols: Sequence[sp.Symbol], header: str = 
     n = len(symbols)
     print(f"\n{header:=^60}:\n")
     simplified_tensor = tensor.applyfunc(sp.simplify)
-    if tensor.rank() == 2:
+    if simplified_tensor.rank() == 2:
         sp.pprint(simplified_tensor, use_unicode=True)
-    elif tensor.rank() == 3:
+    elif simplified_tensor.rank() == 3:
         for alpha in range(n):
             print(f"\nSlice {alpha} ({symbols[alpha]}) with indices [{alpha}, :, :]:\n")
-            sp.pprint(simplified_tensor[alpha, :, :], use_unicode=True)
-    elif tensor.rank() == 4:
+            sp.pprint(simplified_tensor[alpha, :], use_unicode=True)
+    elif simplified_tensor.rank() == 4:
         for alpha in range(n):
             for beta in range(n):
                 print(f"\nSlice [{alpha}, {beta}, :, :] ({symbols[alpha]}, {symbols[beta]}):\n")
-                sp.pprint(simplified_tensor[alpha, beta, :, :], use_unicode=True)
+                sp.pprint(simplified_tensor[alpha, beta], use_unicode=True)
 
 
 def print_riemann_curvature_tensor(Riemann: sp.Matrix, symbols: Sequence[sp.Symbol], header: str = "Riemann Curvature Tensor"):
@@ -275,7 +275,7 @@ def print_riemann_curvature_tensor(Riemann: sp.Matrix, symbols: Sequence[sp.Symb
 
 
 def main():
-    coords = Sphere2DCoordinateSystem()
+    coords = SchwarzschildCoordinateSystem()
     Gamma = christoffel_symbols(coords.metric_tensor, coords.symbols)
 
     print_tensor(coords.metric_tensor, coords.symbols, header="Metric Tensor in Polar Coordinates")
