@@ -3,6 +3,9 @@ import numpy as np
 from dataclasses import dataclass
 from numpy.typing import NDArray
 import tabulate
+import json
+from typing import Optional
+import hashlib
 
 
 @dataclass
@@ -66,48 +69,91 @@ def read_initialization_procedure_file(file_path: pl.Path) -> list[Schematic]:
     return schematics
 
 
-def solve_gf2(matrix: NDArray[np.int_], target: NDArray[np.int_]) -> tuple[int, NDArray[np.int_], NDArray[np.int_]]:
-    """Solve the system using Gaussian elimination over GF(2)"""
-    num_rows, num_cols = matrix.shape
-    for col in range(num_cols):
-        # Find a row with a 1 in this column
-        row = None
-        for row in range(col, num_rows):
-            if matrix[row, col] == 1:
-                break
+def brute_force_solver(schematic: "Schematic") -> int:
+    """
+    Solves the button press problem using a brute-force approach. It generates all possible combinations of button presses and checks which one satisfies the light states and joltage requirements.
+
+    This is not an efficient solution for large schematics but serves as a baseline for correctness.
+    """
+    n_buttons = schematic.button_wiring.shape[1]
+    min_presses: int = 100000
+
+    print("Number of buttons:", n_buttons, "Total combinations to check:", 1 << n_buttons)
+
+    # Generate all possible combinations of button presses (2^n_buttons)
+    # The i << n_buttons operation shifts the number 1 (0000000001 in binary, number of digits depends on precision) to the left by n_buttons places, effectively creating a binary number with n_buttons bits.
+    # For example, if n_buttons is 3, then 1 << 3 would be 8 (00001000 in binary), which means we will check all combinations from 0 to 7 (00000000 to 00000111 in binary).
+    for i in range(1 << n_buttons):
+        presses = [int((i >> j) & 1) for j in range(n_buttons)]
+        resulting_lights = np.zeros_like(schematic.lights)
+
+        # Calculate the resulting light states based on the button presses
+        # e.g., if the current button wiring is [[1, 0], [0, 1]] and the presses are [1, 0], the resulting lights would be [1, 0] (first button toggles the first light).
+        # Pressing it again (presses [1, 1]) would toggle the first light again, resulting in [0, 0], which is given by the XOR operation.
+        for button_idx, pressed in enumerate(presses):
+            if pressed:
+                resulting_lights ^= schematic.button_wiring[:, button_idx]
+
+        # Check if the resulting light states match the target and joltage requirements
+        if np.array_equal(resulting_lights, schematic.lights):
+            min_presses = min(min_presses, sum(presses))
+
+    return min_presses if min_presses != 100000 else -1  # Return -1 if no solution found
+
+
+class ButtonPressSolver:
+    """Context Class for solving the button press problem using a strategy pattern. It stores the results automatically (if used in a with statement) and can be extended to use different solving strategies."""
+
+    def __init__(self, save_file: Optional[pl.Path] = None):
+        self.save_file = save_file or (pl.Path(__file__).parent / "results.json")
+        self.results = {}
+
+    def solve(self, schematic: "Schematic") -> int:
+        """Solves the button press problem for a given schematic and returns the minimum number of button presses needed."""
+        schematic_hash = hashlib.md5(str(schematic).encode()).hexdigest()
+        if schematic_hash in self.results:
+            print("Result already computed, retrieving from saved results.")
+            return self.results[schematic_hash]
+
+        presses = brute_force_solver(schematic)
+        self._save_result(schematic, presses)
+        return presses
+
+    def _save_result(self, schematic: "Schematic", presses: int):
+        """Saves the result for a given schematic."""
+        self.results[hashlib.md5(str(schematic).encode()).hexdigest()] = presses
+
+    def __enter__(self):
+        """Load the existing results from the save file if it exists, otherwise initialize an empty dictionary."""
+        if self.save_file.exists():
+            with self.save_file.open("r") as f:
+                self.results = json.load(f)
         else:
-            continue
-        # Swap rows
-        matrix[[col, row]] = matrix[[row, col]]
-        target[[col, row]] = target[[row, col]]
-        # Eliminate other rows
-        for row in range(num_rows):
-            if row != col and matrix[row, col] == 1:
-                matrix[row] ^= matrix[col]
-                target[row] ^= target[col]
-    # Count the minimum number of presses
-    return sum(target), matrix, target
+            self.results = {}
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            return False  # Don't suppress exceptions
+        with self.save_file.open("w") as f:
+            json.dump(self.results, f, indent=2)
 
 
 def main():
     current_dir = pl.Path(__file__).parent
     example_file = current_dir / "example.txt"
     input_file = current_dir / "input.txt"
+    save_file = current_dir / "results.json"
 
-    schematics = read_initialization_procedure_file(example_file)
-    [print(schematic) for schematic in schematics]
+    schematics = read_initialization_procedure_file(input_file)
 
     total_presses = 0
-    for schematic in schematics:
-        matrix = schematic.button_wiring.copy()
-        target = schematic.lights.copy()
-        min_presses, final_matrix, target = solve_gf2(matrix[:, 1:], target)
-        total_presses += min_presses
-        print(f"Minimum button presses needed: {min_presses}")
-        print(f"Final button states: {target.tolist()}")
-        print(final_matrix)
 
-    print(f"Total minimum button presses for all schematics: {total_presses}")
+    with ButtonPressSolver(save_file=save_file) as solver:
+        for schematic in schematics:
+            presses = solver.solve(schematic)
+            print(f"Minimum button presses needed: {presses}")
+            total_presses += presses
 
 
 if __name__ == "__main__":
